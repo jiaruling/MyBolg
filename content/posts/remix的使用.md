@@ -3,7 +3,7 @@ title: "Remix的使用"
 date: 2024-04-27T21:36:37+08:00
 lastmod: 2024-04-27T21:36:37+08:00
 author: ["me"]
-categories: [""] # 没有分类界面可以不填写
+categories: ["web3"] # 没有分类界面可以不填写
 tags: [""] # 标签
 description: ""
 weight:
@@ -24,3 +24,14 @@ showbreadcrumbs: true #顶部显示路径
 #     alt: ""
 #     relative: false
 ---
+
+## Remix IDE
+
+> 线上地址: https://remix.ethereum.org/
+>
+> 桌面版本: https://github.com/ethereum/remix-desktop/releases
+
+![](/image/remix.png)
+
+![](/image/remix1.png)
+
