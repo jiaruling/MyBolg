@@ -57,7 +57,50 @@ Ganache CLI（前身为 TestRPC）是一个基于 Node.js 的命令行工具，�
 
 Ganache CLI 是一个强大的工具，为以太坊开发者提供了一个本地化的开发和测试环境。它的简便安装和易于使用，使得开发者能够更高效地测试和调试智能合约和 DApp。在区块链开发过程中，Ganache CLI 是不可或缺的利器。
 
+## MetaMask钱包的安装和使用
+
+1. 导入本地的测试网络`Ganache-cli`
+   - 网络名称: `localhost:8545`
+   - RPC url: `http://127.0.0.1:8545`
+   - 链ID: 1337
+   - 货币符号: ETH
+2. 通过的私钥导入账户
+3. 通过浏览器Remix(Injected Provider - MetaMask)与MetaMask钱包相链接
+
 ## ERC20
 
 > 同质化资产：例如货币，股票，没有唯一性。
+> 地址: [ERC20 - OpenZeppelin Docs](https://docs.openzeppelin.com/contracts/4.x/erc20)
 
+```solidity
+// SPDX-License-Identifier: GPL-3.0
+
+pragma solidity >=0.8.0 <0.9.0;
+
+contract BalanceManager {
+    mapping(address=>uint256) public balanceOf;
+
+    string public name = "MYDOLLAR";
+    string public symbol = "$";
+    uint8 public decimals = 4;
+
+    constructor(uint256 total){
+        balanceOf[msg.sender] = total;
+    }
+
+    function transfer(address to, uint256 amount) public  {
+        address from = msg.sender;
+        uint256 fb = balanceOf[from];
+        uint256 tb = balanceOf[to];
+
+        require(amount <= fb, "from account do not have enough money!");
+
+        fb -= amount;
+        tb += amount;
+        balanceOf[from] = fb;
+        balanceOf[to] = tb;
+    }
+}
+```
+
+- 注意：在Ganache的测试环境中，使用0.8.20以下的版本进行编译，要不然部署的时候会编译环境和部署环境不匹配的错误。
