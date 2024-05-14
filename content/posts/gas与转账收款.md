@@ -82,7 +82,7 @@ contract EtherUnits {
 - 交易发起者设定最多消耗多少: gaslimit
 - 合约之间调用，调用者可以设定gaslimit
 - 区块本身有一个gaslimit(社区决定的)
-- Gasleft()是以上因素作为限定，与当前gas消耗一起计算的结果
+- gasleft()获取剩余的gas
 
 ### 退款规则
 
@@ -91,6 +91,89 @@ contract EtherUnits {
 - 交易失败，已经用了的gas不退
 
 ### gas编码实战
+
+> 使用本地的`Ganache-cli`网络, 并使用MetaMask钱包进行演示
+
+- EOA账号调用合约的gas消耗
+
+  ```solidity
+  // SPDX-License-Identifier: GPL-3.0
+  
+  pragma solidity >=0.8.2 <0.9.0;
+  
+  contract Gas {
+      uint public i = 0;
+      uint public remained;
+  
+      function forever() public {
+          while (true) {
+              if (i > 100) 
+                  return;
+              if (i == 50)
+                  remained = gasleft(); // 获取剩余的gas
+              i += 1;
+          }
+      }
+  }
+  ```
+
+  - 编译、部署并执行`forever`函数,查看`gas`的消耗和`ETH`的消耗。系统默认的gas price为 20 Gwei,所以消耗的`ETH=20 Gwei * gas`
+
+  - 可以在MetaMask钱包被调用时设置gaslimit, 到gaslimit小于真实的gas时，交易会执行失败
+
+- 合约之间的gaslimit
+
+  ```solidity
+  // SPDX-License-Identifier: GPL-3.0
+  
+  pragma solidity >=0.8.0 <0.9.0;
+  
+  contract Gas {
+      uint public i = 0;
+      uint public remained;
+  
+      function forever() public {
+          while (true) {
+              if (i > 100) 
+                  return;
+              if (i == 50)
+                  remained = gasleft();
+              i += 1;
+          }
+      }
+  }
+  
+  // 静态调用
+  contract  GasCaller {
+      Gas gas;
+  
+      constructor(Gas _gas) {
+          gas = _gas;
+      }
+  
+      function callForever() public {
+          gas.forever{gas: 21000}(); // 合约调用限制gas的大小，gaslimit小于真实的gas消耗会调用失败
+      }
+  }
+  
+  // 动态调用
+  contract  GasCallCaller {
+      address gas;
+  
+      constructor(address _gas) {
+          gas = _gas;
+      }
+  
+      function callForever() public {
+          bytes memory cd = abi.encodeWithSignature("forever()");
+          (bool suc, bytes memory data) = gas.call{gas: 21000}(cd); // 合约调用限制gas的大小，gaslimit小于真实的gas消耗会调用失败
+          if (!suc) {
+              revert("gas not enough");
+          }
+  
+      }
+  }
+  ```
 
 ### 转账
 
@@ -116,3 +199,86 @@ contract EtherUnits {
 - 新的转账设计没有专门的转账函数，而是普通函数调用的伴生物
 - send和transfer就是gaslimit为2300的calldata为空的call，区别在于transfer处理了call的返回值
 - 建议使用新的转账设计
+
+#### 编码实战
+
+```solidity
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.24;
+
+// 收账
+contract ReceiveEther {
+    /*
+    Which function is called, fallback() or receive()?
+
+           send Ether
+               |
+         msg.data is empty?
+              / \
+            yes  no
+            /     \
+    receive() exists?  fallback()
+         /   \
+        yes   no
+        /      \
+    receive()   fallback()
+    */
+
+    // Function to receive Ether. msg.data must be empty
+    receive() external payable {}
+
+    // Fallback function is called when msg.data is not empty
+    fallback() external payable {}
+
+    function getBalance() public view returns (uint256) {
+        return address(this).balance;
+    }
+}
+
+// 转账
+contract SendEther {
+    function sendViaTransfer(address payable _to) public payable {
+        // This function is no longer recommended for sending Ether.
+        _to.transfer(msg.value);
+    }
+
+    function sendViaSend(address payable _to) public payable {
+        // Send returns a boolean value indicating success or failure.
+        // This function is not recommended for sending Ether.
+        bool sent = _to.send(msg.value);
+        require(sent, "Failed to send Ether");
+    }
+	
+	// 推荐使用
+    function sendViaCall(address payable _to) public payable {
+        // Call returns a boolean value indicating success or failure.
+        // This is the current recommended method to use.
+        (bool sent, bytes memory data) = _to.call{value: msg.value}("");
+        require(sent, "Failed to send Ether");
+    }
+    
+    // 解析send的实现
+    function mySend(address payable _to) public payable returns (bool) {
+        (bool sent, bytes memory data) = _to.call{value: msg.value, gas: 2300}(""); // gas=2300 限制收账的时候有其它操作
+        return sent;
+    }
+
+     // 解析transfer的实现
+    function myTransfer(address payable _to) public payable {
+        (bool sent, bytes memory data) = _to.call{value: msg.value, gas: 2300}(""); // gas=2300 限制收账的时候有其它操作
+        require(sent, "Failed to send Ether");
+    }
+}
+```
+
+### 合约边界性问题
+
+- 调用非合约地址的合约函数总是成功
+- 非合约地址并非一定是外部账号，地址空间是黑暗森林
+- 合约不一定能接受资产，接收了资产也不一定能够转出资产
+
+#### checksum
+
+- address的使用中如果有输入错误是非常危险的，地址进入黑暗森林，资产进入黑洞
+- checksum保证了输入错误能够被检查出来
+- checksum检查是在链下完成，比如在ethersjs这种js打包中完成，链上并不会检查checksum
