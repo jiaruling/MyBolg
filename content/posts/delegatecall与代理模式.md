@@ -217,6 +217,8 @@ contract Proxy {
 - 想办法让`proxy`中的`logic`不参与storage成员的堆叠，也就不必再`logicV1`中出现`placeholder`
 - `proxy`成为通用的、存储的代理，只安排代理控制逻辑，跟具体业务无关，而`logicV1`成为纯粹干净的业务逻辑，跟代理机制无关
 
+#### 编码实战
+
 ```solidity
 ```
 
@@ -226,7 +228,7 @@ contract Proxy {
 
 ### 库合约定义
 
-- 库定义 `library` 关键字
+- 库定义: `library` 关键字
 - 不能继承别的合约，只能实现接口
 - 不能有构造函数、成员变量、修饰器
 
@@ -235,4 +237,9 @@ contract Proxy {
 - public和external库函数是通过delegatecall调用，但是调用的参数约束与内部调用相同
 - internal是通过编译时代码内联实现
 - 一个库如果含有public函数必然要单独部署，其地址通过编译时嵌入或者部署时作为部署参数传入
+
+#### 编码实战
+
+```solidity
+```
 
